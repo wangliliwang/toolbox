@@ -1,4 +1,28 @@
 .PHONY: test
 
+BIN=go
+
 test:
-	go test -v .
+	${BIN} test -race -v ./...
+watch-test:
+	reflex -t 50ms -s -- sh -c '${BIN} test -race -v ./...'
+
+bench:
+	${BIN} test -benchmem -count 3 -bench ./...
+watch-bench:
+	reflex -t 50ms -s -- sh -c '${BIN} test -benchmem -count 3 -bench ./...'
+
+tools:
+	${BIN} install github.com/cespare/reflex@latest
+#	${BIN} install github.com/rakyll/gotest@latest
+#	${BIN} install github.com/psampaz/go-mod-outdated@latest
+#	${BIN} install github.com/jondot/goweight@latest
+	${BIN} install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+#	${BIN} get -t -u golang.org/x/tools/cmd/cover
+#	${BIN} install github.com/sonatype-nexus-community/nancy@latest
+#	${BIN} mod tidy
+
+lint:
+	golangci-lint run --timeout 60s --max-same-issues 50 ./...
+lint-fix:
+	golangci-lint run --timeout 60s --max-same-issues 50 --fix ./...

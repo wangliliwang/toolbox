@@ -2,6 +2,7 @@ package toolbox
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -133,4 +134,124 @@ func DispatchingStrategyMost[T any](msg T, index uint64, channels []<-chan T) in
 	return FindBy(seq, func(a, b int) bool {
 		return (len(channels[a]) > len(channels[b])) && channelIsNotFull(channels[a])
 	})
+}
+
+// SliceToChannel returns a read-only channel of collection items.
+func SliceToChannel[T any](collection []T, bufferSize int) <-chan T {
+	ch := make(chan T, bufferSize)
+	go func() {
+		for _, item := range collection {
+			ch <- item
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+// ChannelToSlice returns a slice built from channel items.
+// Blocks until channel closes.
+func ChannelToSlice[T any](ch <-chan T) []T {
+	collection := make([]T, 0)
+	for item := range ch {
+		collection = append(collection, item)
+	}
+	return collection
+}
+
+// Generator implements the generator design pattern.
+// Refer: https://github.com/tmrts/go-patterns/blob/master/concurrency/generator.md
+func Generator[T any](bufferSize int, generator func(yield func(T))) <-chan T {
+	ch := make(chan T, bufferSize)
+	go func() {
+		// WARNING: infinite loop
+		generator(func(t T) {
+			ch <- t
+		})
+		close(ch)
+	}()
+	return ch
+}
+
+// Buffer creates a slice of n elements from a channel. Returns the slice and slice length.
+func Buffer[T any](ch <-chan T, size int) (collection []T, length int, readTime time.Duration, closed bool) {
+	collection = make([]T, 0, size)
+	now := time.Now()
+	closed = true
+	for index := 0; index < size; index++ {
+		value, ok := <-ch
+		if !ok {
+			closed = false
+			break
+		}
+		collection = append(collection, value)
+	}
+	length = len(collection)
+	readTime = time.Since(now)
+	return
+}
+
+// BufferWithTimeout
+func BufferWithTimeout[T any](ch <-chan T, size int, timeout time.Duration) (collection []T, length int, readTime time.Duration, closed bool) {
+	expire := time.NewTimer(timeout)
+	defer expire.Stop()
+
+	collection = make([]T, 0, size)
+	now := time.Now()
+	closed = true
+	for index := 0; index < size; index++ {
+		select {
+		case value, ok := <-ch:
+			if !ok {
+				closed = false
+				break
+			}
+			collection = append(collection, value)
+		case <-expire.C:
+			break
+		}
+	}
+	length = len(collection)
+	readTime = time.Since(now)
+	return
+}
+
+// FanIn collects items from multiple channels into a single buffered channel.
+// Output messages has no priority. When all upstream channels reach EOF, downstream channel closes.
+func FanIn[T any](channelBufferCap int, upstreams ...<-chan T) <-chan T {
+	out := make(chan T, channelBufferCap)
+	wg := sync.WaitGroup{}
+	wg.Add(len(upstreams))
+	for _, upstream := range upstreams {
+		go func(ch <-chan T) {
+			for item := range ch {
+				out <- item
+			}
+			wg.Done()
+		}(upstream)
+	}
+
+	go func() {
+		wg.Wait()
+		close(out) // TODO(@wangli) reader has problems?
+	}()
+
+	return out
+}
+
+// FanOut broadcasts all upstream messages to multiple downstream channels.
+// When upstream channel EOF, downstream channels close.
+// If any downstream channel is full, broadcasting is paused.
+func FanOut[T any](count, channelBufferCap int, upstream <-chan T) []<-chan T {
+	downstreamChannels := createChannels[T](count, channelBufferCap)
+
+	go func() {
+		for item := range upstream {
+			for _, ch := range downstreamChannels {
+				ch <- item
+			}
+		}
+		closeChannels(downstreamChannels)
+	}()
+
+	return channelsToReadonly(downstreamChannels)
 }
