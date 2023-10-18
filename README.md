@@ -41,3 +41,4 @@ Most of the time, the compiler will be able to infer the type so that you can ca
 2. github actions
 3. no dependencies outside the Go standard library
 4. go playground
+5. setup app.codecov.io for tests

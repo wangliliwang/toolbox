@@ -7,6 +7,10 @@ test:
 watch-test:
 	reflex -t 50ms -s -- sh -c '${BIN} test -race -v ./...'
 
+coverage:
+	${BIN} test -v -coverprofile=cover.out -covermode=atomic .
+	${BIN} tool cover -html=cover.out -o cover.html
+
 bench:
 	${BIN} test -benchmem -count 3 -bench ./...
 watch-bench:
