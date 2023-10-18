@@ -121,7 +121,7 @@ func DispatchingStrategyFirst[T any](msg T, index uint64, channels []<-chan T) i
 
 // DispatchingStrategyLeast distributes messages in the emptiest channel.
 func DispatchingStrategyLeast[T any](msg T, index uint64, channels []<-chan T) int {
-	seq := Range(len(channels))
+	seq := Range[int](len(channels))
 	return FindBy(seq, func(a, b int) bool {
 		return len(channels[a]) < len(channels[b])
 	})
@@ -130,7 +130,7 @@ func DispatchingStrategyLeast[T any](msg T, index uint64, channels []<-chan T) i
 // DispatchingStrategyMost distributes messages in the fullest channel.
 // If the channel capacity is exceeded, the next channel will be selected and so on.
 func DispatchingStrategyMost[T any](msg T, index uint64, channels []<-chan T) int {
-	seq := Range(len(channels))
+	seq := Range[int](len(channels))
 	return FindBy(seq, func(a, b int) bool {
 		return (len(channels[a]) > len(channels[b])) && channelIsNotFull(channels[a])
 	})
