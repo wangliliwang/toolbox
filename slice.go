@@ -19,6 +19,17 @@ func Filter[T any](collection []T, predicate func(item T, index int) bool) []T {
 	return result
 }
 
+// Reject iterates over elements of collection, returns an array of all elements that predicate function returns falsey for.
+func Reject[T any](collection []T, predicate func(item T, index int) bool) []T {
+	result := make([]T, 0)
+	for index, item := range collection {
+		if !predicate(item, index) {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 // Map manipulates a slice and transforms it into a slice with another type.
 func Map[T any, R any](collection []T, iteratee func(item T, index int) R) []R {
 	result := make([]R, 0, len(collection))
@@ -73,6 +84,13 @@ func ReduceRight[T any, R any](collection []T, accumulator func(agg R, item T, i
 func ForEach[T any](collection []T, iteratee func(item T, index int)) {
 	for index, item := range collection {
 		iteratee(item, index)
+	}
+}
+
+// ForEachRight iterates over collection from the end and invokes iteratee function for each element.
+func ForEachRight[T any](collection []T, iteratee func(item T, index int)) {
+	for index := len(collection) - 1; index >= 0; index-- {
+		iteratee(collection[index], index)
 	}
 }
 
@@ -435,4 +453,164 @@ func SliceWithCopy[T any](collection []T, start, end int) []T {
 	dst := make([]T, len(src))
 	copy(dst, src)
 	return dst
+}
+
+// Count returns the number of times of the value.
+func Count[T comparable](collection []T, value T) int {
+	count := 0
+	for _, item := range collection {
+		if item == value {
+			count++
+		}
+	}
+	return count
+}
+
+// CountBy returns a map composed of keys generated from iteratee.
+// The corresponding value of each key is the number of times the key was returned by iteratee.
+func CountBy[T any, K comparable](collection []T, iteratee func(item T, index int) K) map[K]int {
+	result := make(map[K]int)
+	for index, item := range collection {
+		k := iteratee(item, index)
+		result[k]++
+	}
+	return result
+}
+
+// Every returns true if all elements of a subset are contained into a collection or if the subset is empty.
+func Every[T comparable](collection []T, subset []T) bool {
+	if len(subset) <= 1 {
+		for _, item := range subset {
+			if !Contains(collection, item) {
+				return false
+			}
+		}
+		return true
+	} else {
+		mp := CollectionToSet(collection)
+		for _, item := range subset {
+			if !containsInSet(mp, item) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// EveryBy returns true if predicate function returns true for all elements in the collection or if the collection is empty.
+func EveryBy[T comparable](collection []T, predicate func(item T) bool) bool {
+	for _, item := range collection {
+		if !predicate(item) {
+			return false
+		}
+	}
+	return true
+}
+
+// Contains returns true if an element present in a collection.
+func Contains[T comparable](collection []T, element T) bool {
+	for _, item := range collection {
+		if item == element {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInSet[T comparable](set map[T]struct{}, element T) bool {
+	_, ok := set[element]
+	return ok
+}
+
+// ContainsBy returns true if predicate function return true.
+func ContainsBy[T comparable](collection []T, predicate func(item T) bool) bool {
+	for _, item := range collection {
+		if predicate(item) {
+			return true
+		}
+	}
+	return false
+}
+
+// Some returns true if at lease one element of a subset is contained into a collection.
+// If the subset is empty Some returns false.
+func Some[T comparable](collection []T, subset []T) bool {
+	if len(subset) <= 1 {
+		for _, item := range subset {
+			if Contains(collection, item) {
+				return true
+			}
+		}
+		return false
+	} else {
+		mp := CollectionToSet(collection)
+		for _, item := range subset {
+			if containsInSet(mp, item) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// SomeBy returns true if predicate function returns true for at least one element in the collection.
+// If the subset is empty SomeBy returns false.
+func SomeBy[T comparable](collection []T, predicate func(item T) bool) bool {
+	for _, item := range collection {
+		if predicate(item) {
+			return true
+		}
+	}
+	return false
+}
+
+// None returns true if all elements of a subset is NOT contained into a collection or if the subset is empty.
+func None[T comparable](collection []T, subset []T) bool {
+	if len(subset) <= 1 {
+		for _, item := range subset {
+			if Contains(collection, item) {
+				return false
+			}
+		}
+		return true
+	} else {
+		mp := CollectionToSet(collection)
+		for _, item := range subset {
+			if containsInSet(mp, item) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// NoneBy returns true if predicate function returns false for all elements in the collection or if the subset is empty.
+func NoneBy[T comparable](collection []T, predicate func(item T) bool) bool {
+	for _, item := range collection {
+		if predicate(item) {
+			return false
+		}
+	}
+	return true
+}
+
+// Sample returns a random element in collection.
+// If collection is empty, return zero value and false.
+func Sample[T any](collection []T) (T, bool) {
+	if len(collection) == 0 {
+		var zero T
+		return zero, false
+	}
+	// perm
+	return collection[rand.Intn(len(collection))], true
+}
+
+// SampleSize returns n random elements with diffent indexes in collection.
+// TODO(@wangli) make it more efficient.
+func SampleSize[T any](collection []T, n int) []T {
+	min := Min(len(collection), n)
+	indexes := rand.Perm(len(collection))
+	return RepeatBy(min, func(index int) T {
+		return collection[indexes[index]]
+	})
 }

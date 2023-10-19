@@ -16,6 +16,15 @@ func ExampleFilter() {
 	// Output: [2 4]
 }
 
+func ExampleReject() {
+	list := []int64{1, 2, 3, 4, 5}
+	result := Reject(list, func(item int64, index int) bool {
+		return item%2 == 0
+	})
+	fmt.Printf("%+v", result)
+	// Output: [1 3 5]
+}
+
 func ExampleMap() {
 	list := []int64{1, 2, 3}
 	result := Map(list, func(item int64, index int) string {
@@ -72,6 +81,14 @@ func ExampleForEach() {
 		fmt.Printf("%d:%d,", index, item)
 	})
 	// Output: 0:1,1:2,2:3,3:4,4:5,
+}
+
+func ExampleForEachRight() {
+	list := []int64{1, 2, 3, 4, 5}
+	ForEachRight(list, func(item int64, index int) {
+		fmt.Printf("%d:%d,", index, item)
+	})
+	// Output: 4:5,3:4,2:3,1:2,0:1,
 }
 
 func ExampleTimes() {
@@ -342,4 +359,11 @@ func ExampleSliceWithCopy() {
 	result := SliceWithCopy(list, 1, 3)
 	fmt.Printf("%+v", result)
 	// Output: [2 3]
+}
+
+func ExampleSampleSize() {
+	list := []int64{1, 2, 3, 4, 5, 6, 7}
+	result := SampleSize(list, 2)
+	fmt.Printf("%+v", len(result))
+	// Output: 2
 }
