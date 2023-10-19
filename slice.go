@@ -1,8 +1,11 @@
 package toolbox
 
 import (
+	"fmt"
+	"github.com/spf13/cast"
 	"math"
 	"math/rand"
+	"strings"
 )
 
 // Filter iterates over elements of collection, returns an array of all elements that predicate function returns truthy for.
@@ -75,7 +78,7 @@ func ForEach[T any](collection []T, iteratee func(item T, index int)) {
 
 // Times invokes the iteratee function n times, returning an array of results of each invocation.
 func Times[T any](count int, iteratee func(index int) T) []T {
-	result := make([]T, count)
+	result := make([]T, 0, count)
 	for i := 0; i < count; i++ {
 		result = append(result, iteratee(i))
 	}
@@ -99,11 +102,11 @@ func Uniq[T comparable](collection []T) []T {
 // UniqBy returns a duplicate-free version of an array, in which only the first occurrence of the element is kept.
 // It accepts `iteratee` which is invoked for each element in array to generate the criterion by which uniqueness is computed.
 // The order of result values is determined by the order they occur in the array.
-func UniqBy[T any, U comparable](collection []T, iteratee func(item T) U) []T {
+func UniqBy[T any, U comparable](collection []T, iteratee func(item T, index int) U) []T {
 	result := make([]T, 0)
 	seen := make(map[U]struct{})
-	for _, item := range collection {
-		u := iteratee(item)
+	for index, item := range collection {
+		u := iteratee(item, index)
 		if _, ok := seen[u]; !ok {
 			seen[u] = struct{}{}
 			result = append(result, item)
@@ -113,10 +116,10 @@ func UniqBy[T any, U comparable](collection []T, iteratee func(item T) U) []T {
 }
 
 // GroupBy returns an object composed of keys generated from the results of running each element of collection through iteratee.
-func GroupBy[T any, U comparable](collection []T, iteratee func(item T) U) map[U][]T {
+func GroupBy[T any, U comparable](collection []T, iteratee func(item T, index int) U) map[U][]T {
 	result := make(map[U][]T)
-	for _, item := range collection {
-		u := iteratee(item)
+	for index, item := range collection {
+		u := iteratee(item, index)
 		result[u] = append(result[u], item)
 	}
 	return result
@@ -143,11 +146,11 @@ func Chunk[T any](collection []T, size int) [][]T {
 // PartitionBy returns an array of elements split into groups.
 // The order of grouped values is determined by the order they occur in collection.
 // The grouping is generated from the results of running each element of collection through iteratee function.
-func PartitionBy[T any, P comparable](collection []T, iteratee func(item T) P) [][]T {
+func PartitionBy[T any, P comparable](collection []T, iteratee func(item T, index int) P) [][]T {
 	result := make([][]T, 0)
 	seen := make(map[P]int)
-	for _, item := range collection {
-		key := iteratee(item)
+	for index, item := range collection {
+		key := iteratee(item, index)
 		if index, ok := seen[key]; ok {
 			result[index] = append(result[index], item)
 		} else {
@@ -176,7 +179,7 @@ func Interleave[T any](collections ...[]T) []T {
 	maxLength := len(maxLengthCollection)
 	for lengthIndex := 0; lengthIndex < maxLength; lengthIndex++ {
 		for _, collection := range collections {
-			if len(collections)-1 >= lengthIndex {
+			if len(collection)-1 >= lengthIndex {
 				result = append(result, collection[lengthIndex])
 			}
 		}
@@ -184,34 +187,53 @@ func Interleave[T any](collections ...[]T) []T {
 	return result
 }
 
-// Shuffle shuffle the values in the collection in-place.
+// Shuffle shuffles the values in the collection in-place.
 // Using the Fisher-Yates shuffle algorithm.
-// todo(wangli) learn this algo
-func Shuffle[T any](collection []T) {
+func Shuffle[T any](collection []T) []T {
 	rand.Shuffle(len(collection), func(i, j int) {
 		collection[i], collection[j] = collection[j], collection[i]
 	})
+	return collection
 }
 
 // Reverse reverses array in-place so that the first element become the last, the second element becomes the second to the last, and so on.
-func Reverse[T any](collection []T) {
+func Reverse[T any](collection []T) []T {
 	length := len(collection)
 	half := length / 2
 	for i := 0; i < half; i++ {
 		j := length - 1 - i
 		collection[i], collection[j] = collection[j], collection[i]
 	}
+	return collection
 }
 
 // Fill fills the collection with initial value.
-func Fill[T Clonable[T]](collection []T, initial T) {
+func Fill[T any](collection []T, initial T) []T {
 	for index := range collection {
-		collection[index] = initial.Clone()
+		collection[index] = initial
 	}
+	return collection
+}
+
+// FillWithClone fills the collection with cloned initial value.
+func FillWithClone[T Cloneable[T]](collection []T, initial T) []T {
+	for index := range collection {
+		collection[index] = initial
+	}
+	return collection
 }
 
 // Repeat returns a array of count initial values.
-func Repeat[T Clonable[T]](count int, initial T) []T {
+func Repeat[T any](count int, initial T) []T {
+	result := make([]T, 0, count)
+	for i := 0; i < count; i++ {
+		result = append(result, initial)
+	}
+	return result
+}
+
+// RepeatWithClone returns an array of count initial cloned values.
+func RepeatWithClone[T Cloneable[T]](count int, initial T) []T {
 	result := make([]T, 0, count)
 	for i := 0; i < count; i++ {
 		result = append(result, initial.Clone())
@@ -229,20 +251,188 @@ func RepeatBy[T any](count int, predicate func(index int) T) []T {
 }
 
 // KeyBy transforms a slice to a map based on a pivot callback.
-func KeyBy[K comparable, V any](collection []V, iteratee func(v V) K) map[K]V {
+func KeyBy[K comparable, V any](collection []V, iteratee func(v V, index int) K) map[K]V {
 	result := make(map[K]V)
-	for _, item := range collection {
-		result[iteratee(item)] = item
+	for index, item := range collection {
+		result[iteratee(item, index)] = item
 	}
 	return result
 }
 
 // Associate transforms a slice to a map whose key-value pairs are generated by transform function.
-func Associate[T any, K comparable, V any](collection []T, transform func(t T) (K, V)) map[K]V {
+func Associate[T any, K comparable, V any](collection []T, transform func(t T, index int) (K, V)) map[K]V {
 	result := make(map[K]V)
-	for _, item := range collection {
-		k, v := transform(item)
+	for index, item := range collection {
+		k, v := transform(item, index)
 		result[k] = v
 	}
 	return result
+}
+
+// Drop returns a slice with n elements dropped from the beginning of the collection.
+func Drop[T any](collection []T, n int) []T {
+	if n >= len(collection) {
+		return make([]T, 0)
+	}
+	result := make([]T, 0, len(collection)-n)
+	result = append(result, collection[n:]...)
+	return result
+}
+
+// DropRight returns a slice with n elements dropped from the end of the collection.
+func DropRight[T any](collection []T, n int) []T {
+	if n >= len(collection) {
+		return make([]T, 0)
+	}
+	result := make([]T, 0, len(collection)-n)
+	result = append(result, collection[:len(collection)-n]...)
+	return result
+}
+
+// DropWhile returns a slice excluding elements dropped from the beginning.
+// Elements are dropped until the predicate function returns falsey.
+func DropWhile[T any](collection []T, predicate func(item T, index int) bool) []T {
+	startIndex := 0
+	for ; startIndex < len(collection); startIndex++ {
+		if !predicate(collection[startIndex], startIndex) {
+			break
+		}
+	}
+	return Drop(collection, startIndex)
+}
+
+// DropRightWhile returns a slice excluding elements dropped from the end.
+// Elements are dropped until the predicate function returns falsey.
+func DropRightWhile[T any](collection []T, predicate func(item T, index int) bool) []T {
+	endIndex := len(collection) - 1
+	for ; endIndex >= 0; endIndex-- {
+		if !predicate(collection[endIndex], endIndex) {
+			break
+		}
+	}
+	return DropRight(collection, len(collection)-1-endIndex)
+}
+
+// Take creates a slice of n elements taken from the beginning.
+func Take[T any](collection []T, n int) []T {
+	return Slice(collection, 0, n)
+}
+
+// TakeRight creates a slice of n elements taken from the end.
+func TakeRight[T any](collection []T, n int) []T {
+	return Slice(collection, len(collection)-n, len(collection))
+}
+
+// TakeWhile creates a slice of n elements taken from the beginning.
+// Elements are taken until the predicate function returns falsey.
+func TakeWhile[T any](collection []T, predicate func(item T, index int) bool) []T {
+	n := 0
+	for index, item := range collection {
+		if !predicate(item, index) {
+			n = index
+			break
+		}
+	}
+	return Take(collection, n)
+}
+
+// TakeRightWhile creates a slice of n elements taken from the end.
+// Elements are taken until the predicate function returns falsey.
+func TakeRightWhile[T any](collection []T, predicate func(item T, index int) bool) []T {
+	endIndex := len(collection) - 1
+	for ; endIndex >= 0; endIndex-- {
+		if !predicate(collection[endIndex], endIndex) {
+			break
+		}
+	}
+	return TakeRight(collection, len(collection)-1-endIndex)
+}
+
+// Head returns first element in the collection.
+// If the collection is empty, return zero value of T and false.
+func Head[T any](collection []T) (T, bool) {
+	if len(collection) > 0 {
+		return collection[0], true
+	}
+	var zero T
+	return zero, false
+}
+
+// Last returns last element in the collection.
+// If the collection is empty, return zero value of T and false.
+func Last[T any](collection []T) (T, bool) {
+	if len(collection) > 0 {
+		return collection[len(collection)-1], true
+	}
+	var zero T
+	return zero, false
+}
+
+// Initial returns all but the last element of the collection.
+func Initial[T any](collection []T) []T {
+	return DropRight(collection, 1)
+}
+
+// Tail returns all but the first element of the collection.
+func Tail[T any](collection []T) []T {
+	return Drop(collection, 1)
+}
+
+// Join converts all elements in array into a string separated by separator
+// TODO(@wangli) thinking about how to check if T is string
+func Join[T any](collection []T, separator string) string {
+	return strings.Join(Map[T, string](collection, func(item T, index int) string {
+		// efficient any to string
+		result, err := cast.ToStringE(item)
+		if err != nil {
+			return fmt.Sprintf("%v", item)
+		}
+		return result
+	}), separator)
+}
+
+// Remove excludes all excludedValues in collection.
+func Remove[T comparable](collection []T, excludedValues ...T) []T {
+	excludeMap := CollectionToSet(excludedValues)
+	return Filter[T](collection, func(item T, index int) bool {
+		_, ok := excludeMap[item]
+		return !ok
+	})
+}
+
+// RemoveBy removes all elements that predicate function returns true in collection.
+func RemoveBy[T any](collection []T, predicate func(item T, index int) bool) []T {
+	return Filter[T](collection, func(item T, index int) bool {
+		return !predicate(item, index)
+	})
+}
+
+// Slice returns a slice of collection from start up to, but not including, end.
+// It's like collection[start:end], but will not panic on overflow.
+func Slice[T any](collection []T, start, end int) []T {
+	length := len(collection)
+	if start >= end || length == 0 {
+		return make([]T, 0)
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start > length-1 {
+		start = length - 1
+	}
+	if end < 0 {
+		end = 0
+	}
+	if end > length {
+		end = length
+	}
+	return collection[start:end]
+}
+
+// SliceWithCopy returns a copy of slice in collection from start up to, but not including, end.
+func SliceWithCopy[T any](collection []T, start, end int) []T {
+	src := Slice(collection, start, end)
+	dst := make([]T, len(src))
+	copy(dst, src)
+	return dst
 }

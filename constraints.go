@@ -1,5 +1,5 @@
 package toolbox
 
-type Clonable[T any] interface {
+type Cloneable[T any] interface {
 	Clone() T
 }

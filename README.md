@@ -43,3 +43,4 @@ Most of the time, the compiler will be able to infer the type so that you can ca
 3. no dependencies outside the Go standard library
 4. go playground
 5. setup app.codecov.io for tests
+6. test: example, fuzz, unittest. develop a tool, generate test
