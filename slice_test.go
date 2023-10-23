@@ -5,6 +5,23 @@ import (
 	"testing"
 )
 
+// TODO(@wangli) edge case
+
+func TestFilter(t *testing.T) {
+	t.Parallel()
+	is := assert.New(t)
+
+	result1 := Filter([]int{1, 2, 3, 4, 5}, func(item int, index int) bool {
+		return item%2 == 0
+	})
+	is.Equal([]int{2, 4}, result1)
+
+	result2 := Filter([]int{}, func(item int, index int) bool {
+		return item%2 == 0
+	})
+	is.Equal([]int{}, result2)
+}
+
 func TestContains(t *testing.T) {
 	t.Parallel()
 	is := assert.New(t)
