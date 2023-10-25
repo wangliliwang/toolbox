@@ -1,4 +1,4 @@
-module toolbox
+module github.com/wangliliwang/toolbox
 
 go 1.20
 
