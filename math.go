@@ -4,12 +4,8 @@ import "golang.org/x/exp/constraints"
 
 // Range creates a range with abs(elementNum) elements, which starts from 0.
 func Range[T constraints.Integer](elementNum int) []T {
-	length := elementNum
-	step := 1
-	if length < 0 {
-		length = -length
-		step = -1
-	}
+	length := Ternary(elementNum >= 0, elementNum, -elementNum)
+	step := Ternary(elementNum >= 0, 1, -1)
 	result := make([]T, 0, length)
 	for i, j := 0, T(0); i < length; i, j = i+1, j+T(step) {
 		result = append(result, j)
@@ -19,12 +15,8 @@ func Range[T constraints.Integer](elementNum int) []T {
 
 // RangeFrom creates a range with abs(elementNum) elements, which starts from `from`.
 func RangeFrom[T constraints.Integer | constraints.Float](from T, elementNum int) []T {
-	length := elementNum
-	step := 1
-	if length < 0 {
-		length = -length
-		step = -1
-	}
+	length := Ternary(elementNum >= 0, elementNum, -elementNum)
+	step := Ternary(elementNum >= 0, 1, -1)
 	result := make([]T, 0, length)
 	for i, j := 0, from; i < length; i, j = i+1, j+T(step) {
 		result = append(result, j)
