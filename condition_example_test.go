@@ -46,7 +46,7 @@ func ExampleIfF() {
 	// 1 2
 }
 
-func ExampleElseIf() {
+func ExampleifElse_ElseIf() {
 	result1 := If(false, 1).
 		ElseIf(true, 2).
 		Else(3)
@@ -58,7 +58,7 @@ func ExampleElseIf() {
 	// 2 3
 }
 
-func ExampleElseIfF() {
+func ExampleifElse_ElseIfF() {
 	result1 := If(false, 1).
 		ElseIfF(true, func() int { return 2 }).
 		Else(3)
