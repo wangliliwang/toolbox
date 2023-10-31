@@ -1,6 +1,7 @@
 package toolbox
 
 import (
+	"errors"
 	"fmt"
 	"github.com/spf13/cast"
 	"math"
@@ -613,4 +614,19 @@ func SampleSize[T any](collection []T, n int) []T {
 	return RepeatBy(min, func(index int) T {
 		return collection[indexes[index]]
 	})
+}
+
+// Nth returns the element at index `nth` of collection.
+// If `nth` is negative, returns `nth` element from the end.
+// If `nth` is out of slice bound, returns zero-value of T and error.
+func Nth[T any](collection []T, n int) (T, error) {
+	length := len(collection)
+	if n >= length || -n > length {
+		var zero T
+		return zero, errors.New("out of slice bound")
+	}
+	if n < 0 {
+		n = n + length
+	}
+	return collection[n], nil
 }

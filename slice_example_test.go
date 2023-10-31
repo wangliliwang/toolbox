@@ -367,3 +367,12 @@ func ExampleSampleSize() {
 	fmt.Printf("%+v", len(result))
 	// Output: 2
 }
+
+func ExampleNth() {
+	collection := []int{1, 2, 3, 4, 5}
+	result1, err1 := Nth(collection, 1)
+	result2, err2 := Nth(collection, -1)
+	fmt.Println(result1, err1, result2, err2)
+	// Output:
+	// 2 <nil> 5 <nil>
+}
