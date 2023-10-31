@@ -30,3 +30,6 @@ lint:
 	golangci-lint run --timeout 60s --max-same-issues 50 ./...
 lint-fix:
 	golangci-lint run --timeout 60s --max-same-issues 50 --fix ./...
+
+generate:
+	go run cmd/generate_tuples.go -output tuples.go
