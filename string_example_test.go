@@ -30,3 +30,38 @@ func ExampleRuneLength() {
 	// Output:
 	// 4
 }
+
+func ExampleSnakeCase() {
+	result := SnakeCase("hello, world!")
+	fmt.Println(result)
+	// Output:
+	// hello_world
+}
+
+func ExampleCamelCase() {
+	result := CamelCase("hello, world!")
+	fmt.Println(result)
+	// Output:
+	// helloWorld
+}
+
+func ExampleCapitalize() {
+	result := Capitalize("hello, world!")
+	fmt.Println(result)
+	// Output:
+	// Hello, world!
+}
+
+func ExampleRepeatString() {
+	result := RepeatString("ab", 3)
+	fmt.Println(result)
+	// Output:
+	// ababab
+}
+
+func ExampleWords() {
+	result := Words("hello, world!")
+	fmt.Println(result)
+	// Output:
+	// [hello world]
+}

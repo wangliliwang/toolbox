@@ -41,13 +41,19 @@ const (
 	debounceStateCanceled  debounceState = 3
 )
 
+type debounceAction int
+
+const (
+	debounceActionCall   debounceAction = 1
+	debounceActionFlush  debounceAction = 2
+	debounceActionCancel debounceAction = 3
+)
+
 // debounce implement debounce function.
 // FIXME(@wangli) There're some problems in change states.
 type debounce struct {
 	// inner
-	callCh   chan struct{}
-	cancelCh chan struct{}
-	flushCh  chan struct{}
+	actionCh chan debounceAction
 	timer    *time.Timer
 	mu       sync.RWMutex
 	state    debounceState
@@ -61,9 +67,7 @@ func newDebounce(function func(), delay time.Duration) *debounce {
 	timer := time.NewTimer(delay)
 	timer.Stop()
 	dbc := &debounce{
-		callCh:   make(chan struct{}),
-		cancelCh: make(chan struct{}),
-		flushCh:  make(chan struct{}),
+		actionCh: make(chan debounceAction),
 		timer:    timer,
 		mu:       sync.RWMutex{},
 		f:        function,
@@ -74,15 +78,21 @@ func newDebounce(function func(), delay time.Duration) *debounce {
 		defer dbc.closeResources()
 		for {
 			select {
-			case <-dbc.callCh:
-				dbc.onCall()
-			case <-dbc.flushCh:
-				dbc.onFlush()
+			case v, ok := <-dbc.actionCh:
+				if !ok {
+					return
+				}
+				switch v {
+				case debounceActionCall:
+					dbc.onCall()
+				case debounceActionFlush:
+					dbc.onFlush()
+				case debounceActionCancel:
+					dbc.onCancel()
+					return
+				}
 			case <-dbc.timer.C:
 				dbc.onTimer()
-			case <-dbc.cancelCh:
-				dbc.onCancel()
-				return
 			}
 		}
 	}()
@@ -90,9 +100,7 @@ func newDebounce(function func(), delay time.Duration) *debounce {
 }
 
 func (d *debounce) closeResources() {
-	close(d.callCh)
-	close(d.cancelCh)
-	close(d.flushCh)
+	close(d.actionCh)
 	d.timer.Stop()
 }
 
@@ -105,7 +113,6 @@ func (d *debounce) onCancel() {
 	}
 	d.state = debounceStateCanceled
 	d.timer.Stop()
-	fmt.Println("onCancel: ", d.state)
 }
 
 func (d *debounce) onFlush() {
@@ -145,29 +152,33 @@ func (d *debounce) onTimer() {
 }
 
 func (d *debounce) cancel() {
-	if d.state == debounceStateCanceled {
-		panic("can't cancel canceled debounce")
-	}
-	d.cancelCh <- struct{}{}
+	d.actionCh <- debounceActionCancel
 }
 
 func (d *debounce) flush() {
-	if d.state == debounceStateCanceled {
-		panic("can't flush canceled debounce")
-	}
-	fmt.Println("flush: ", d.state)
-	d.flushCh <- struct{}{}
+	d.actionCh <- debounceActionFlush
 }
 
 func (d *debounce) call() {
-	if d.state == debounceStateCanceled {
-		panic("can't call canceled debounce")
-	}
-	d.callCh <- struct{}{}
+	d.actionCh <- debounceActionCall
 }
 
 // NewDebounce returns call, flush and cancel function in debounce.
 func NewDebounce(function func(), delay time.Duration) (call, flush, cancel func()) {
 	dbc := newDebounce(function, delay)
 	return dbc.call, dbc.flush, dbc.cancel
+}
+
+// Memoize creates a function that memoize the result of func.
+func Memoize[T any](function func(key string) T) func(key string) T {
+	cache := make(map[string]T)
+	return func(key string) T {
+		if v, ok := cache[key]; ok {
+			return v
+		} else {
+			calculatedV := function(key)
+			cache[key] = calculatedV
+			return calculatedV
+		}
+	}
 }

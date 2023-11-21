@@ -3,6 +3,8 @@ package toolbox
 import (
 	"math"
 	"math/rand"
+	"regexp"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -14,6 +16,8 @@ var (
 	AlphanumericCharset     = append(LettersCharset, NumbersCharset...)
 	SpecialCharset          = []rune("!@#$%^&*()_+-=[]{}|;':\",./<>?")
 	AllCharset              = append(AlphanumericCharset, SpecialCharset...)
+
+	wordsReg = regexp.MustCompile(`\b\w+\b`)
 )
 
 // RandomString returns string of utf8-length size, and with char from charset.
@@ -64,4 +68,55 @@ func ChunkString[T ~string](str T, size int) []T {
 // RuneLength returns rune count in str.
 func RuneLength(str string) int {
 	return utf8.RuneCountInString(str)
+}
+
+// SnakeCase returns snake-case version of input string.
+func SnakeCase(raw string) string {
+	words := Words(raw)
+	titledWords := Map(words, func(item string, index int) string {
+		return strings.ToLower(item)
+	})
+	return strings.Join(titledWords, "_")
+}
+
+// CamelCase returns camel-case version of input string.
+func CamelCase(raw string) string {
+	words := Words(raw)
+	titledWords := Map(words, func(item string, index int) string {
+		if index == 0 {
+			return strings.ToLower(item)
+		} else {
+			return strings.Title(strings.ToLower(item))
+		}
+	})
+	return strings.Join(titledWords, "")
+}
+
+// Capitalize converts the first character of string to upper case,
+// and the remaining to lower case.
+func Capitalize(raw string) string {
+	if len(raw) == 0 {
+		return raw
+	}
+	raw = strings.ToLower(raw)
+	rawRune := []rune(raw)
+	rawRune[0] = []rune(strings.ToUpper(string(rawRune[0])))[0]
+	return string(rawRune)
+}
+
+// RepeatString repeats the string n times.
+func RepeatString(raw string, n int) string {
+	if raw == "" {
+		return ""
+	}
+	result := make([]string, n)
+	ForEach(result, func(item string, index int) {
+		result[index] = raw
+	})
+	return strings.Join(result, "")
+}
+
+// Words splits string into an array of its words.
+func Words(raw string) []string {
+	return wordsReg.FindAllString(raw, -1)
 }
